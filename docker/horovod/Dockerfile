@@ -1,20 +1,20 @@
-ARG CUDA_DOCKER_VERSION=11.2.2-devel-ubuntu18.04
+ARG CUDA_DOCKER_VERSION=10.1-devel-ubuntu18.04
 FROM nvidia/cuda:${CUDA_DOCKER_VERSION}
 
 # Arguments for the build. CUDA_DOCKER_VERSION needs to be repeated because
 # the first usage only applies to the FROM tag.
 # TensorFlow version is tightly coupled to CUDA and cuDNN so it should be selected carefully
 ARG CUDA_DOCKER_VERSION=11.2.2-devel-ubuntu18.04
-ARG TENSORFLOW_VERSION=2.5.0
-ARG PYTORCH_VERSION=1.8.1+cu111
+ARG TENSORFLOW_VERSION=2.3.0
+ARG PYTORCH_VERSION=1.6.0
 ARG PYTORCH_LIGHTNING_VERSION=1.2.9
-ARG TORCHVISION_VERSION=0.9.1+cu111
-ARG CUDNN_VERSION=8.1.1.33-1+cuda11.2
-ARG NCCL_VERSION=2.8.4-1+cuda11.2
-ARG MXNET_VERSION=1.8.0.post0
+ARG TORCHVISION_VERSION=0.7.0
+ARG CUDNN_VERSION=7.6.5.32-1+cuda10.1
+# ARG NCCL_VERSION=2.7.8-1+cuda10.1
+ARG MXNET_VERSION=1.6.0.post0
 
-ARG PYSPARK_PACKAGE=pyspark==3.1.1
-ARG SPARK_PACKAGE=spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz
+ARG PYSPARK_PACKAGE=pyspark==2.4.7
+ARG SPARK_PACKAGE=spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz
 
 # Python 3.7 is supported by Ubuntu Bionic out of the box
 ARG PYTHON_VERSION=3.7
@@ -31,9 +31,10 @@ RUN apt-get update && apt-get install -y --allow-downgrades --allow-change-held-
         vim \
         wget \
         ca-certificates \
-        libcudnn8=${CUDNN_VERSION} \
-        libnccl2=${NCCL_VERSION} \
-        libnccl-dev=${NCCL_VERSION} \
+        # libcudnn8=${CUDNN_VERSION} \
+        libcudnn7=${CUDNN_VERSION} \
+        libnccl2=2.7.8-1+cuda10.1 \
+        libnccl-dev=2.7.8-1+cuda10.1 \
         libjpeg-dev \
         libpng-dev \
         python${PYTHON_VERSION} \
@@ -75,8 +76,9 @@ RUN pip install \
     torch==${PYTORCH_VERSION} \
     torchvision==${TORCHVISION_VERSION} \
     -f https://download.pytorch.org/whl/${PYTORCH_VERSION/*+/}/torch_stable.html
-RUN pip install pytorch_lightning==${PYTORCH_LIGHTNING_VERSION}
-RUN pip install mxnet-cu112==${MXNET_VERSION}
+# RUN pip install pytorch_lightning==${PYTORCH_LIGHTNING_VERSION}
+# RUN pip install mxnet-cu112==${MXNET_VERSION}
+RUN pip install mxnet-cu101==${MXNET_VERSION}
 
 # Install Spark stand-alone cluster.
 RUN wget --progress=dot:giga "https://www.apache.org/dyn/closer.lua/spark/${SPARK_PACKAGE}?action=download" -O - | tar -xzC /tmp; \
@@ -102,3 +104,7 @@ RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
     python -c "import horovod.torch as hvd; hvd.init()" && \
     python -c "import horovod.mxnet as hvd; hvd.init()" && \
     ldconfig
+
+# Install correct version of tensorflow-gpu
+RUN pip install tensorflow-gpu==${TENSORFLOW_VERSION}
+RUN pip install filelock
