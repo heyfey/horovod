@@ -150,7 +150,9 @@ class WorkerStateRegistry(object):
         # Check for failures, and add them to the blacklisted hosts list
         failures = self.get(FAILURE)
         for host, slot in failures:
-            self._host_manager.blacklist(host)
+            # self._host_manager.blacklist(host)
+            logging.warning(
+                'blacklist has been turned off, skipped blacklist failing host: {}'.format(host))
 
         # If every active host is blacklisted, then treat this as job failure
         if all([self._host_manager.is_blacklisted(host) for host, slot in self.get_recorded_slots()]):
