@@ -16,6 +16,7 @@
 import io
 import logging
 import threading
+import time
 
 from collections import defaultdict
 
@@ -41,11 +42,19 @@ class HostState(object):
 
     def blacklist(self):
         self._blacklisted = True
+        self._blacklisted_time = time.time()
         self.set_event()
 
     def is_blacklisted(self):
         return self._blacklisted
 
+    # recover from blacklist if timeout period of 120 seconds has passed
+    def try_recover_from_blacklist(self):
+        now = time.time()
+        if now - self._blacklisted_time > 120:
+            self._blacklisted = False
+            return True
+        return False
 
 class DiscoveredHosts(object):
     def __init__(self, host_slots, host_assignment_order):
@@ -108,6 +117,10 @@ class HostManager(object):
         prev_host_slots = self._current_hosts.host_slots
         prev_host_assignment_order = self._current_hosts.host_assignment_order
         host_slots = self._discovery.find_available_hosts_and_slots()
+        for host in host_slots.keys():
+            if self._hosts_state[host].is_blacklisted():
+                if self._hosts_state[host].try_recover_from_blacklist():
+                    logging.info('recovered blacklisted host: {}'.format(host))
         if prev_host_slots != host_slots:
             available_hosts = set([host for host in host_slots.keys() if not self._hosts_state[host].is_blacklisted()])
             host_assignment_order = HostManager.order_available_hosts(available_hosts, prev_host_assignment_order)
